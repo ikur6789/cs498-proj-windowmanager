@@ -22,8 +22,8 @@
 set -e
 
 # 1. Build binary.
-make 
-
+#make 
+gcc main.c -o beej_and_ian_make_a_window -l X11
 # 2. Run.
 #
 # We need to specify the full path to Xephyr, as otherwise xinit will not
