@@ -119,7 +119,10 @@ int main (int argc, char *argv[])
 				//Store the attributes of the event window into xA (Window Attributes Struct)
 				XGetWindowAttributes(d, xE.xkey.subwindow, &xA);
 				//Store the button event from the general events into xStart (xButton Event)
-			 	xStart = xE.xbutton;
+				xStart = xE.xbutton;
+				
+				//make sure the window isn't below any other windows when it is active
+				XRaiseWindow(d, xE.xbutton.subwindow);
 			}
 
 		}
@@ -143,7 +146,7 @@ int main (int argc, char *argv[])
 						//Arg4, New y position of window, calculated by delta_y
 				
 				//If right button clicked
-				if(xStart.button == 3)
+				else if(xStart.button == 3)
 				{
 					//Makes sure window is a reasonable size
 					if( xA.width + delta_x > 10 && xA.height + delta_y > 10)
