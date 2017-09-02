@@ -1,5 +1,6 @@
-/*
- * */
+/* CS498 Capstone - X11 Window Manager
+ * Authors: William Blair, Ian Kurzrock 
+ * 09/01/2017 */
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -7,17 +8,29 @@
 #include <stdio.h>
 #include <stdlib.h>      //Used for exit command
 
+/**************************************/
+/**         Defines/Constants        **/
+/**************************************/
+#define DEBUG
+
+/**************************************/
+/**       Function Declarations      **/
+/**************************************/
 void openWindow(void);
 void setEvents(void);
 void processEvents(void);
 
-
+/**************************************/
+/**        Global Variables          **/
+/**************************************/
 Display 		*d = NULL;
 XWindowAttributes 	xA;
 XButtonEvent		xStart;
 XEvent 			xE;
 
-
+/**************************************/
+/**        Function Definitions      **/
+/**************************************/
 void openWindow(void)
 {
 	// Open connection to display
@@ -80,93 +93,99 @@ void setEvents(void)
 		//Arg10, Cursor, which cursor to draw when this event is happening, none meaning don't change the cursor
 }
 
+/**************************************/
+/**     Main - Program Entrypoint    **/
+/**************************************/
 int main (int argc, char *argv[])
 {
+	// Create connection to the X server
 	openWindow();
 
+	// set which events to handle
 	setEvents();
 
 	//Set event window (xStart) to nothing
-	 xStart.subwindow = None;
+	xStart.subwindow = None;
 	int run = 1;
-	 /*For you Confer <3*/
-	 do
-	 {
+	/*For you Confer <3*/
+	do
+	{
 		XNextEvent(d, &xE);
-		//Check for events and handle accordingly
 
+#ifdef DEBUG
 		if(xE.type == KeyPress && xE.xkey.keycode == XKeysymToKeycode(d, XK_Escape))
 		{
 				run--;
 		}
-
+#endif
+		//Check for events and handle accordingly
 		switch(xE.type)
 		{
-		//Check if a key was pressed inside a window
-		case(KeyPress): 
-		{      
-		      if(xE.xkey.subwindow != None)
-		      	//Make window with button pressed active
-			XRaiseWindow(d, xE.xkey.subwindow);
-		}
-		break;
-		
-		//Check if a window was clicked with a mouse button
-		case(ButtonPress):
-		{	 
-			if(xE.xkey.subwindow!=None)
-			{	 
-				//Store the attributes of the event window into xA (Window Attributes Struct)
-				XGetWindowAttributes(d, xE.xkey.subwindow, &xA);
-				//Store the button event from the general events into xStart (xButton Event)
-				xStart = xE.xbutton;
-				
-				//make sure the window isn't below any other windows when it is active
-				XRaiseWindow(d, xE.xbutton.subwindow);
+			//Check if a key was pressed inside a window
+			case(KeyPress): 
+			{      
+				if(xE.xkey.subwindow != None)
+					//Make window with button pressed active
+					XRaiseWindow(d, xE.xkey.subwindow);
 			}
-
-		}
-		break;
-
-		case(MotionNotify):
-		{	
-			if(xE.xkey.subwindow != None)
-			{
-				//Calculating Window Movement, xbutton is mouse button atrributes structure, 
-				//xStart is button event when we first clicked on window
-				int delta_x = xE.xbutton.x_root - xStart.x_root;	//integer to calculate window movement in x axis
-				int delta_y = xE.xbutton.y_root - xStart.y_root;	//integer to calculate window movement in y axis
+			break;
 			
-				//If left button clicked
-				if(xStart.button == 1)
-					XMoveWindow(d, xE.xkey.subwindow, xA.x + delta_x, xA.y + delta_y);
-						//Arg1, Main window pointer
-						//Arg2, Active window
-						//Arg3, New x position of window, calculated by delta_x
-						//Arg4, New y position of window, calculated by delta_y
-				
-				//If right button clicked
-				else if(xStart.button == 3)
+			//Check if a window was clicked with a mouse button
+			case(ButtonPress):
+			{	 
+				if(xE.xkey.subwindow!=None)
+				{	 
+					//Store the attributes of the event window into xA (Window Attributes Struct)
+					XGetWindowAttributes(d, xE.xkey.subwindow, &xA);
+					//Store the button event from the general events into xStart (xButton Event)
+					xStart = xE.xbutton;
+					
+					//make sure the window isn't below any other windows when it is active
+					XRaiseWindow(d, xE.xbutton.subwindow);
+				}
+
+			}
+			break;
+
+			case(MotionNotify):
+			{	
+				if(xE.xkey.subwindow != None)
 				{
-					//Makes sure window is a reasonable size
-					if( xA.width + delta_x > 10 && xA.height + delta_y > 10)
-						XResizeWindow(d, xE.xkey.subwindow, xA.width + delta_x, xA.height + delta_y);
+					//Calculating Window Movement, xbutton is mouse button atrributes structure, 
+					//xStart is button event when we first clicked on window
+					int delta_x = xE.xbutton.x_root - xStart.x_root;	//integer to calculate window movement in x axis
+					int delta_y = xE.xbutton.y_root - xStart.y_root;	//integer to calculate window movement in y axis
+				
+					//If left button clicked
+					if(xStart.button == 1)
+						XMoveWindow(d, xE.xkey.subwindow, xA.x + delta_x, xA.y + delta_y);
+							//Arg1, Main window pointer
+							//Arg2, Active window
+							//Arg3, New x position of window, calculated by delta_x
+							//Arg4, New y position of window, calculated by delta_y
+					
+					//If right button clicked
+					else if(xStart.button == 3)
+					{
+						//Makes sure window is a reasonable size
+						if( xA.width + delta_x > 10 && xA.height + delta_y > 10)
+							XResizeWindow(d, xE.xkey.subwindow, xA.width + delta_x, xA.height + delta_y);
+					}
 				}
 			}
-		}
-		break;
+			break;
 
-		//Checks if mouse let go
-		case(ButtonRelease):
-		{
-			xStart.subwindow = None;		
-		}	
-		break;
-		
-		default:
-		{
-			printf("Wassup");
-		}
+			//Checks if mouse let go
+			case(ButtonRelease):
+			{
+				xStart.subwindow = None;
+			}	
+			break;
+			
+			default:
+			{
+				printf("Wassup");
+			}
 		}
 }	while(run==1);
 
