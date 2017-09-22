@@ -98,6 +98,11 @@ void setEvents(void)
 /**************************************/
 int main (int argc, char *argv[])
 {
+	// set when we click on a window to 
+	//move it - fixes the issue where you will stop moving 
+	//the window if the cursor moves off of it too fast
+	Bool moving_window = False; 
+
 	// Create connection to the X server
 	openWindow();
 
@@ -133,8 +138,14 @@ int main (int argc, char *argv[])
 			//Check if a window was clicked with a mouse button
 			case(ButtonPress):
 			{	 
-				if(xE.xkey.subwindow!=None)
-				{	 
+				if(xE.xbutton.subwindow!=None)
+				{	
+					// Take command of the mouse cursor, looking for motion and button release events
+					XGrabPointer(d, xE.xbutton.subwindow, True, 
+						PointerMotionMask|ButtonReleaseMask,
+						GrabModeAsync, GrabModeAsync,
+						None, None, CurrentTime
+					);
 					//Store the attributes of the event window into xA (Window Attributes Struct)
 					XGetWindowAttributes(d, xE.xkey.subwindow, &xA);
 					//Store the button event from the general events into xStart (xButton Event)
@@ -142,6 +153,10 @@ int main (int argc, char *argv[])
 					
 					//make sure the window isn't below any other windows when it is active
 					XRaiseWindow(d, xE.xbutton.subwindow);
+					
+					// set that we currently could be moving
+					// a window
+					moving_window = True;
 				}
 
 			}
@@ -149,7 +164,7 @@ int main (int argc, char *argv[])
 
 			case(MotionNotify):
 			{	
-				if(xE.xkey.subwindow != None)
+				if(moving_window)
 				{
 					//Calculating Window Movement, xbutton is mouse button atrributes structure, 
 					//xStart is button event when we first clicked on window
@@ -158,7 +173,7 @@ int main (int argc, char *argv[])
 				
 					//If left button clicked
 					if(xStart.button == 1)
-						XMoveWindow(d, xE.xkey.subwindow, xA.x + delta_x, xA.y + delta_y);
+						XMoveWindow(d, xE.xmotion.window, xA.x + delta_x, xA.y + delta_y);
 							//Arg1, Main window pointer
 							//Arg2, Active window
 							//Arg3, New x position of window, calculated by delta_x
@@ -172,13 +187,22 @@ int main (int argc, char *argv[])
 							XResizeWindow(d, xE.xkey.subwindow, xA.width + delta_x, xA.height + delta_y);
 					}
 				}
+				
+				
 			}
 			break;
 
 			//Checks if mouse let go
 			case(ButtonRelease):
 			{
+				// we're not moving a window now
+				moving_window = False;
+				
+				// reset the starting window
 				xStart.subwindow = None;
+				
+				// Release command of the cursor
+				XUngrabPointer(d, CurrentTime);
 			}	
 			break;
 			
