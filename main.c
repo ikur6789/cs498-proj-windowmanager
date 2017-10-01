@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>      //Used for exit command
 
+#include "reparent.h"
+
 /**************************************/
 /**         Defines/Constants        **/
 /**************************************/
@@ -40,6 +42,15 @@ void openWindow(void)
 		fprintf(stderr, "Failed to connect to display!\n");
 		exit(1); 	//Error1: Failed to connect to display
 	}
+
+	// Say that we want to be able to reparent windows
+	XSelectInput(
+		d, RootWindow(d, DefaultScreen(d)),
+		SubstructureRedirectMask | SubstructureNotifyMask
+	);
+
+	// clear current events
+	XSync(d, False);
 }
 
 
@@ -140,6 +151,8 @@ int main (int argc, char *argv[])
 			{	 
 				if(xE.xbutton.subwindow!=None)
 				{	
+					printf("XSubwindow button press!\n");
+
 					// Take command of the mouse cursor, looking for motion and button release events
 					XGrabPointer(d, xE.xbutton.subwindow, True, 
 						PointerMotionMask|ButtonReleaseMask,
@@ -147,17 +160,55 @@ int main (int argc, char *argv[])
 						None, None, CurrentTime
 					);
 					//Store the attributes of the event window into xA (Window Attributes Struct)
-					XGetWindowAttributes(d, xE.xkey.subwindow, &xA);
+					XGetWindowAttributes(d, xE.xbutton.subwindow, &xA);
 					//Store the button event from the general events into xStart (xButton Event)
 					xStart = xE.xbutton;
 					
 					//make sure the window isn't below any other windows when it is active
 					XRaiseWindow(d, xE.xbutton.subwindow);
+
+					// Raise parent window (its frame)
+					Window root, parent, *children = NULL;
+					unsigned int numChildren;
+
+					XQueryTree(d, xE.xbutton.subwindow,
+					&root, &parent, &children, &numChildren);
+
+					XRaiseWindow(d, parent);
+
+					if(children) XFree(children);
 					
 					// set that we currently could be moving
 					// a window
-					moving_window = True;
+					//moving_window = True;
 				}
+
+				/* raise a window frame if pressed */
+				else if(xE.xbutton.window != None )
+				{
+	             printf("Xbutton window button press!\n");
+
+				XGrabPointer(d, xE.xbutton.window, True, 
+					PointerMotionMask|ButtonReleaseMask,
+					GrabModeAsync, GrabModeAsync,
+					None, None, CurrentTime
+				);
+	 
+	             // make the window frame pressed bool True
+	             moving_window = True;
+	 
+	             /* save current attributes of the active window so
+	              * if something like motion happens we have its 
+	              * attributes */
+	             XGetWindowAttributes(d, xE.xbutton.window, &xA);
+	             xStart = xE.xbutton;
+	 
+	             /* make sure the window isn't below any other windows
+	              * when it is active */
+	             XRaiseWindow(d, xE.xbutton.window);
+	 
+	         	}
+	
 
 			}
 			break;
@@ -204,6 +255,48 @@ int main (int argc, char *argv[])
 				// Release command of the cursor
 				XUngrabPointer(d, CurrentTime);
 			}	
+			break;
+
+			case(MapRequest):
+			{
+				printf("Map Request!\n");
+				reparent_window(xE.xmaprequest.window, False);
+				XMapWindow(d, xE.xmaprequest.window);
+			}
+			break;
+
+			case(CreateNotify):
+			{
+				printf("Create Notify Event!\n");
+			}
+			break;
+
+			case(ConfigureRequest):
+			{
+				XWindowChanges changes;
+               changes.x = xE.xconfigurerequest.x;
+               changes.y = xE.xconfigurerequest.y;
+               changes.width = xE.xconfigurerequest.width;
+               changes.height = xE.xconfigurerequest.height;
+               changes.border_width = xE.xconfigurerequest.border_width;
+               changes.sibling = xE.xconfigurerequest.above;
+               changes.stack_mode = xE.xconfigurerequest.detail;
+               XConfigureWindow(d, xE.xconfigurerequest.window, xE.xconfigurerequest.value_mask, &changes);
+               printf("Resize: (%d, %d), X,Y: (%d,%d)\n", xE.xconfigurerequest.width, xE.xconfigurerequest.height, xE.xconfigurerequest.x, xE.xconfigurerequest.y);
+
+			}
+			break;
+
+			case(UnmapNotify):
+			{
+				printf("Unmap Notify Event!\n");
+			}
+			break;
+
+			case(DestroyNotify):
+			{
+				printf("Destroy Notify Event!\n");
+			}
 			break;
 			
 			default:
