@@ -29,6 +29,7 @@ Display 		*d = NULL;
 XWindowAttributes 	xA;
 XButtonEvent		xStart;
 XEvent 			xE;
+WMClient        *clientHead = NULL;
 
 /**************************************/
 /**        Function Definitions      **/
@@ -296,12 +297,44 @@ int main (int argc, char *argv[])
 			case(DestroyNotify):
 			{
 				printf("Destroy Notify Event!\n");
+				/* Because the code below generates another destroy notify event,
+				 * and the parent of the frames is the root window, running
+				 * this code will destroy the root window and hence shut down
+				 * the X server unless we skip it with this */
+				if(xE.xdestroywindow.event == RootWindow(d, DefaultScreen(d))){
+					printf("Destroywindow.event == Root! NOT destroying!\n");
+					break;
+				}
+
+				/* find the matching client parent window */
+				WMClient *temp = clientHead;
+				WMClient *head = temp;
+				WMClient *caboose = temp->next;
+				while(temp != NULL){
+					//if(temp->frame == parent) break;
+					if(temp->frame == xE.xdestroywindow.event) break;
+					/* keep track of the entry before and after temp */
+					head = temp;
+					temp = temp->next;
+					caboose = temp->next;
+				}
+				
+				/* Destroy the frame of the window (its parent) 
+				 * and free memory */
+				XDestroyWindow(d, temp->frame);
+				free(temp);
+
+				/* reconnect the previous and after
+				 * WMclients in the list */
+				if(temp != clientHead) head->next = caboose;
+				else                   clientHead = caboose;
+				
 			}
 			break;
 			
 			default:
 			{
-				printf("Wassup");
+				printf("Wassup\n");
 			}
 		}
 }	while(run==1);

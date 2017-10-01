@@ -11,11 +11,10 @@
 //int frames_index=0;
 //Window frames[10];
 
-/* the start of the client linked list */
-WMClient *headClient = NULL;
 
 // variables from main.c
 extern Display *d;
+extern WMClient *clientHead;/* the start of the client linked list */
 
 /* creates a frame for the input child window and reparents
  * it to the created frame */
@@ -40,15 +39,15 @@ Bool reparent_window(Window child, Bool before_wm)
 	}*/
 
 	/* create a new entry in the list */
-	if(headClient == NULL) {
-		headClient = (WMClient *)malloc(sizeof(WMClient));
+	if(clientHead == NULL) {
+		clientHead = (WMClient *)malloc(sizeof(WMClient));
 		/* TODO - test for NULL */
 
-		c = headClient;
+		c = clientHead;
 	}
 	else {
 		/* get the last entry in the client list */
-		WMClient *temp = headClient;
+		WMClient *temp = clientHead;
 		while(temp->next != NULL)
 			temp = temp->next;
 

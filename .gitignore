@@ -2,6 +2,7 @@ X11-Capstone.workspace
 498-capstone.project
 .clang
 .codelite
+*.swp
 Debug
 X11-Capstone.workspace.layout
 498-capstone.mk
