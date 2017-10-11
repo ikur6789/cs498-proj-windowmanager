@@ -4,13 +4,19 @@
 
 #include "reparent.h"
 #include <X11/Xutil.h>
+#include <X11/xpm.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // counter and Windows to be used as window borders
 //int frames_index=0;
 //Window frames[10];
 
+// global variables
+Pixmap minPixmap; // minimize image
+Pixmap maxPixmap; // maximize image
+Pixmap closePixmap; // close window image
 
 // variables from main.c
 extern Display *d;
@@ -77,7 +83,39 @@ Bool reparent_window(Window child, Bool before_wm)
 	              //frames[frames_index], 
 	              c->frame,
 	              SubstructureRedirectMask | SubstructureNotifyMask );
-	              
+    
+    /* Create each button window */
+    c->minWin = XCreateSimpleWindow(d,
+	                             c->frame,    // Display *parent
+	                             (a.width+BORDER_WIDTH)-(BUTTON_SIZE*3), // x coord
+	                             0,                                // y coord
+	                             BUTTON_SIZE,           // window width
+	                             BUTTON_SIZE,              // window height
+	                             0,                       // border size
+	                             WhitePixel(d, DefaultScreen(d)),    // border
+	                             BlackPixel(d, DefaultScreen(d)));   // background
+	c->maxWin = XCreateSimpleWindow(d,
+	                             c->frame,    // Display *parent
+	                             (a.width+BORDER_WIDTH)-(BUTTON_SIZE*2), // x coord
+	                             0,                                // y coord
+	                             BUTTON_SIZE,           // window width
+	                             BUTTON_SIZE,              // window height
+	                             0,                       // border size
+	                             WhitePixel(d, DefaultScreen(d)),    // border
+	                             BlackPixel(d, DefaultScreen(d)));   // background      
+    c->closeWin = XCreateSimpleWindow(d,
+                                    c->frame,    // Display *parent
+                                    (a.width+BORDER_WIDTH)-(BUTTON_SIZE*1), // x coord
+                                    0,                                // y coord
+                                    BUTTON_SIZE,           // window width
+                                    BUTTON_SIZE,              // window height
+                                    0,                       // border size
+                                    WhitePixel(d, DefaultScreen(d)),    // border
+                                    BlackPixel(d, DefaultScreen(d)));   // background        
+    /* give each button window their image */
+    XSetWindowBackgroundPixmap(d, c->minWin, minPixmap);
+    XSetWindowBackgroundPixmap(d, c->maxWin, maxPixmap);
+    XSetWindowBackgroundPixmap(d, c->closeWin, closePixmap);
 	/* restores the child if we crash somehow */
 	XAddToSaveSet(d, child);
 	
@@ -156,9 +194,111 @@ XGrabButton(
     None
 );
 
+    /* test loading a button window */
+    //loadPixmap("files/close.xpm");
+
+
 	/* map the parent window */
 	//XMapWindow(d, frames[frames_index]);
-	XMapWindow(d, c->frame);
+	//XMapWindow(d, c->frame);
+    XMapWindow(d, c->frame); //map the frame and the buttons
+    XMapSubwindows(d, c->frame);
 	//frames_index++;
 	return True;
+}
+
+/* test loading a pixmap */
+//Window loadPixmap(const char *filename)
+Pixmap loadPixmap(const char *filename)
+{
+    Pixmap p;
+    Pixmap mask;
+    XpmAttributes xpmattribs;
+    
+    Window w;
+    
+    printf("Before create simple window!\n");
+    
+    /* create the window */
+    w = XCreateSimpleWindow(
+        d,
+        RootWindow(d, DefaultScreen(d)),
+        0,0, // x, y
+        10,10, // w, h - can't be 0,0 or error
+        0,   // border width,
+        BlackPixel(d, DefaultScreen(d)),
+        WhitePixel(d, DefaultScreen(d))
+    );
+    
+    /* set pixmap attributes */
+    xpmattribs.visual = DefaultVisual(d, DefaultScreen(d));
+    xpmattribs.depth = DefaultDepth(d, DefaultScreen(d));
+    xpmattribs.colormap = DefaultColormap(d, DefaultScreen(d));
+    xpmattribs.valuemask = XpmDepth | XpmColormap | XpmVisual;
+    
+    printf("Before XpmReadFileToPixmap!\n");
+
+    /* load the pixmap */
+    if( XpmReadFileToPixmap(
+            d,
+            RootWindow(d, DefaultScreen(d)),
+            filename,
+            &p,
+            &mask,
+            &xpmattribs
+        ) != XpmSuccess )
+    {
+        fprintf(stderr, "Failed to open pixmap %s\n", filename);
+        //return (Window)0; // so you can test with if !Window
+        return False;
+    }
+    
+    printf("Before if mask free mask!\n");
+    /* free the mask pixmap if not used */
+    if(mask) {
+        XFreePixmap(d, mask);
+    }
+    
+    //printf("Before XSetWindowBackground!\n");
+    
+    /* draw the image to the window */
+    //XSetWindowBackgroundPixmap(d, w, p);
+    
+    //printf("Before Resize Window!\n");
+    
+    /* resize the window to fit the image size */
+    //XResizeWindow(d, w, xpmattribs.width, xpmattribs.height);
+    
+    //printf("Before XMapWindow!\n");
+    
+    /* make the window visible */
+    //XMapWindow(d, w);
+    
+    /* debug test */
+    //sleep(10);
+    
+    //XFreePixmap(d, p);
+    //XDestroyWindow(d, w);
+    //return (Window)0;
+    //return Window;
+    return p;
+}
+
+Bool reparentLoadPixmaps(const char *minimizePixmapName,
+                         const char *maximizePixmapName,
+                         const char *closePixmapName)
+{
+    /* TODO - error check */
+    minPixmap   = loadPixmap(minimizePixmapName);
+    maxPixmap   = loadPixmap(maximizePixmapName);
+    closePixmap = loadPixmap(closePixmapName);
+    
+    return True;
+}
+
+void reparentClosePixmaps(void)
+{
+    if(minPixmap) XFreePixmap(d, minPixmap);
+    if(maxPixmap) XFreePixmap(d, maxPixmap);
+    if(closePixmap) XFreePixmap(d, closePixmap);
 }

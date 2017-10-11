@@ -31,6 +31,12 @@ XButtonEvent		xStart;
 XEvent 			xE;
 WMClient        *clientHead = NULL;
 
+/* files in reparent.c */
+// global variables
+//extern Pixmap minPixmap; // minimize image
+//extern Pixmap maxPixmap; // maximize image
+//extern Pixmap closePixmap; // close window image
+
 /**************************************/
 /**        Function Definitions      **/
 /**************************************/
@@ -121,6 +127,13 @@ int main (int argc, char *argv[])
 	// set which events to handle
 	setEvents();
 
+    // DEBUG - bj test
+    //loadPixmap("files/close.xpm");
+    reparentLoadPixmaps("files/minimize.xpm",
+                        "files/maximize.xpm",
+                        "files/close.xpm");
+                        
+
 	//Set event window (xStart) to nothing
 	xStart.subwindow = None;
 	int run = 1;
@@ -166,7 +179,7 @@ int main (int argc, char *argv[])
 					xStart = xE.xbutton;
 					
 					//make sure the window isn't below any other windows when it is active
-					XRaiseWindow(d, xE.xbutton.subwindow);
+					//XRaiseWindow(d, xE.xbutton.subwindow);
 
 					// Raise parent window (its frame)
 					Window root, parent, *children = NULL;
@@ -175,7 +188,9 @@ int main (int argc, char *argv[])
 					XQueryTree(d, xE.xbutton.subwindow,
 					&root, &parent, &children, &numChildren);
 
+					// raise the window then its child
 					XRaiseWindow(d, parent);
+					XRaiseWindow(d, xE.xbutton.subwindow);
 
 					if(children) XFree(children);
 					
@@ -203,10 +218,28 @@ int main (int argc, char *argv[])
 	              * attributes */
 	             XGetWindowAttributes(d, xE.xbutton.window, &xA);
 	             xStart = xE.xbutton;
+                 //xStart = xE.xbutton.subwindow;
 	 
 	             /* make sure the window isn't below any other windows
 	              * when it is active */
 	             XRaiseWindow(d, xE.xbutton.window);
+                 //XRaiseWindow(d, xE.xbutton.subwindow);
+				
+				// Figure out the main child window
+				WMClient *temp = clientHead;
+				while(temp != NULL)
+				{
+					if(temp->frame == xE.xbutton.window){
+						printf("Found frame child!\n");
+						break;
+					}
+					temp = temp->next;
+				}
+				/* raise the main child window instead of the frame */
+				if(temp != NULL){
+					XRaiseWindow(d, temp->child);
+					printf("Raised frame child!\n");
+				}
 	 
 	         	}
 	
@@ -305,29 +338,49 @@ int main (int argc, char *argv[])
 					printf("Destroywindow.event == Root! NOT destroying!\n");
 					break;
 				}
+                
+
 
 				/* find the matching client parent window */
 				WMClient *temp = clientHead;
 				WMClient *head = temp;
 				WMClient *caboose = temp->next;
+                
+
 				while(temp != NULL){
+
 					//if(temp->frame == parent) break;
 					if(temp->frame == xE.xdestroywindow.event) break;
 					/* keep track of the entry before and after temp */
 					head = temp;
 					temp = temp->next;
-					caboose = temp->next;
+					if(temp != NULL) caboose = temp->next;
+                    else             caboose = NULL;
 				}
-				
-				/* Destroy the frame of the window (its parent) 
-				 * and free memory */
-				XDestroyWindow(d, temp->frame);
-				free(temp);
+                
 
-				/* reconnect the previous and after
-				 * WMclients in the list */
-				if(temp != clientHead) head->next = caboose;
-				else                   clientHead = caboose;
+                
+                if(temp != NULL){
+                    /* Destroy the frame of the window (its parent) 
+				 * and free memory */
+				//XDestroyWindow(d, temp->frame);
+                //XDestroy
+
+                    XDestroySubwindows(d, temp->frame);
+                    XDestroyWindow(d, temp->frame);
+                
+                    /* reconnect the previous and after
+                     * WMclients in the list */
+
+                    if(temp != clientHead) head->next = caboose;
+                    else                   clientHead = caboose;
+
+                    free(temp);
+
+                }
+                else{
+
+                }
 				
 			}
 			break;
@@ -340,6 +393,7 @@ int main (int argc, char *argv[])
 }	while(run==1);
 
 	//Free memory (be free my children)
+    reparentClosePixmaps();
 	XCloseDisplay(d);
 	return 0;	
 }
