@@ -21,15 +21,17 @@
 void openWindow(void);
 void setEvents(void);
 void processEvents(void);
+Window start_taskbar(Window pass);
 
 /**************************************/
 /**        Global Variables          **/
 /**************************************/
-Display 		*d = NULL;
+Display 			*d = NULL;
 XWindowAttributes 	xA;
 XButtonEvent		xStart;
-XEvent 			xE;
-WMClient        *clientHead = NULL;
+XEvent 				xE;
+WMClient        	*clientHead = NULL;
+GC 					gc_taskbar;
 
 /**************************************/
 /**        Function Definitions      **/
@@ -123,6 +125,9 @@ int main (int argc, char *argv[])
 
 	//Set event window (xStart) to nothing
 	xStart.subwindow = None;
+	Window task_w; //X11 window for taskbar
+	task_w = start_taskbar(task_w);
+	XSelectInput(d, task_w, 0);
 	int run = 1;
 	/*For you Confer <3*/
 	do
@@ -342,4 +347,17 @@ int main (int argc, char *argv[])
 	//Free memory (be free my children)
 	XCloseDisplay(d);
 	return 0;	
+}
+
+Window start_taskbar(Window pass)
+{
+	pass=XCreateSimpleWindow(d, DefaultRootWindow(d),0,(HeightOfScreen(DefaultScreenOfDisplay(d))-25),(WidthOfScreen(DefaultScreenOfDisplay(d))),25, 0, BlackPixel(d,DefaultScreen(d)), WhitePixel(d, DefaultScreen(d)));
+	XSelectInput(d, pass, ExposureMask|ButtonPressMask|KeyPressMask);
+	gc_taskbar=XCreateGC(d, pass, 0,0);
+	XSetBackground(d, gc_taskbar, WhitePixel(d, DefaultScreen(d)));
+	XSetForeground(d, gc_taskbar, BlackPixel(d, DefaultScreen(d)));
+	XClearWindow(d, pass);
+	XMapRaised(d, pass);
+
+	return pass;
 }
