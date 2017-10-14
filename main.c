@@ -9,6 +9,7 @@
 #include <stdlib.h>      //Used for exit command
 
 #include "reparent.h"
+#include "destroy.h"
 
 /**************************************/
 /**         Defines/Constants        **/
@@ -119,7 +120,7 @@ int main (int argc, char *argv[])
 	// set when we click on a window to 
 	//move it - fixes the issue where you will stop moving 
 	//the window if the cursor moves off of it too fast
-	Bool moving_window = False; 
+	Bool moving_window = False;
 
 	// Create connection to the X server
 	openWindow();
@@ -166,13 +167,73 @@ int main (int argc, char *argv[])
 				if(xE.xbutton.subwindow!=None)
 				{	
 					printf("XSubwindow button press!\n");
+                    printf("X: %d, Y: %d\n", xE.xbutton.x, xE.xbutton.y);
+                    printf("X root: %d, Y root: %d\n", xE.xbutton.x_root, xE.xbutton.y_root);
+                    
+                    XWindowAttributes winFrameAttribs;
+					Window root, parent, *children = NULL;
+					unsigned int numChildren;
 
+					XQueryTree(d, xE.xbutton.subwindow,
+					&root, &parent, &children, &numChildren);
+                    
+                    XGetWindowAttributes(
+                        d, 
+                        parent, 
+                        &winFrameAttribs
+                    );
+                    
+                    /* do if y_root < 20, and x within (window width - button_size),
+                     * perform button action */
+                    if(xE.xbutton.y < BUTTON_SIZE && // if the y coordinate isn't on the window border and is within the window frame height
+                       xE.xbutton.y > BORDER_WIDTH &&
+                       xE.xbutton.x > winFrameAttribs.width - BUTTON_SIZE*3 // if the mouse x is far enough over
+                       )
+                    {
+                        printf("In button events area!\n");
+                        
+                        /* minimize */
+                        if(xE.xbutton.x < winFrameAttribs.width - BUTTON_SIZE*2){
+                            printf("Minimize area!\n");
+                            
+                        }
+                        /* maximize */
+                        else if(xE.xbutton.x >= winFrameAttribs.width - BUTTON_SIZE*2&&
+                                xE.xbutton.x < winFrameAttribs.width - BUTTON_SIZE*1
+                               ){
+                            printf("Maximize area!\n");
+                        }
+                        /* close */
+                        else if(xE.xbutton.x >= winFrameAttribs.width - BUTTON_SIZE*1&&
+                                xE.xbutton.x < winFrameAttribs.width - BORDER_WIDTH
+                               ){
+                            printf("Close area!\n");
+                            
+                            /* the subwindow is the close icon */
+                            destroyClientFromIcon(xE.xbutton.subwindow);
+                            
+                            /* Get and ignore all of the events generated
+                             * by destroying the windows - an unmap and
+                             * destroy notify for each window (3 icons+child window + frame window)*/
+                            
+                            int i=0;
+                            for(i=0;i<10;i++)
+                            {
+                                printf("Event %d: %s\n", i, (xE.type == DestroyNotify) ? "Destroy Notify" : "UnmapNotify");
+                                XNextEvent(d, &xE);
+                            }
+                            break;
+                        }
+                    }
+                    printf("Before xgrabpointer!\n");
 					// Take command of the mouse cursor, looking for motion and button release events
 					XGrabPointer(d, xE.xbutton.subwindow, True, 
 						PointerMotionMask|ButtonReleaseMask,
 						GrabModeAsync, GrabModeAsync,
 						None, None, CurrentTime
 					);
+                    
+                    printf("Before XGetWindowAttributes!\n");
 					//Store the attributes of the event window into xA (Window Attributes Struct)
 					XGetWindowAttributes(d, xE.xbutton.subwindow, &xA);
 					//Store the button event from the general events into xStart (xButton Event)
@@ -180,18 +241,14 @@ int main (int argc, char *argv[])
 					
 					//make sure the window isn't below any other windows when it is active
 					//XRaiseWindow(d, xE.xbutton.subwindow);
-
-					// Raise parent window (its frame)
-					Window root, parent, *children = NULL;
-					unsigned int numChildren;
-
-					XQueryTree(d, xE.xbutton.subwindow,
-					&root, &parent, &children, &numChildren);
+                    
+                    // Raise parent window (its frame)
 
 					// raise the window then its child
+                    printf("Before XRaiseWindow!\n");
 					XRaiseWindow(d, parent);
 					XRaiseWindow(d, xE.xbutton.subwindow);
-
+                    printf("After XRaiseWindow!\n");
 					if(children) XFree(children);
 					
 					// set that we currently could be moving
@@ -203,6 +260,7 @@ int main (int argc, char *argv[])
 				else if(xE.xbutton.window != None )
 				{
 	             printf("Xbutton window button press!\n");
+                 printf("X: %d, Y: %d\n", xE.xbutton.x, xE.xbutton.y);
 
 				XGrabPointer(d, xE.xbutton.window, True, 
 					PointerMotionMask|ButtonReleaseMask,
@@ -342,45 +400,49 @@ int main (int argc, char *argv[])
 
 
 				/* find the matching client parent window */
-				WMClient *temp = clientHead;
-				WMClient *head = temp;
-				WMClient *caboose = temp->next;
+				//WMClient *temp = clientHead;
+				//WMClient *head = temp;
+				//WMClient *caboose = temp->next;
                 
 
-				while(temp != NULL){
+				//while(temp != NULL){
 
 					//if(temp->frame == parent) break;
-					if(temp->frame == xE.xdestroywindow.event) break;
+				//	if(temp->frame == xE.xdestroywindow.event) break;
 					/* keep track of the entry before and after temp */
-					head = temp;
-					temp = temp->next;
-					if(temp != NULL) caboose = temp->next;
-                    else             caboose = NULL;
-				}
+				//	head = temp;
+				//	temp = temp->next;
+				//	if(temp != NULL) caboose = temp->next;
+                 //   else             caboose = NULL;
+				//}
                 
 
                 
-                if(temp != NULL){
+                //if(temp != NULL){
                     /* Destroy the frame of the window (its parent) 
 				 * and free memory */
 				//XDestroyWindow(d, temp->frame);
                 //XDestroy
-
-                    XDestroySubwindows(d, temp->frame);
-                    XDestroyWindow(d, temp->frame);
+                 //   printf("Before destroy subwindows!\n");
+                 //   XDestroySubwindows(d, temp->frame);
+                    
+                 //   printf("Before destroy frame!\n");
+                 //   XDestroyWindow(d, temp->frame);
+                 //   printf("After destroy frame!\n");
                 
                     /* reconnect the previous and after
                      * WMclients in the list */
 
-                    if(temp != clientHead) head->next = caboose;
-                    else                   clientHead = caboose;
+                 //   if(temp != clientHead) head->next = caboose;
+                 //   else                   clientHead = caboose;
 
-                    free(temp);
+                    //free(temp);
 
-                }
-                else{
+                //}
+                //else{
 
-                }
+                //}
+                destroyClientFromFrame(xE.xdestroywindow.event);
 				
 			}
 			break;
