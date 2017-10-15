@@ -121,6 +121,10 @@ int main (int argc, char *argv[])
 	//move it - fixes the issue where you will stop moving 
 	//the window if the cursor moves off of it too fast
 	Bool moving_window = False;
+    
+    // True when we maximize a window, otherwise
+    // Configure Notify will run when we move the window
+    Bool maximize_window = False;
 
 	// Create connection to the X server
 	openWindow();
@@ -196,12 +200,29 @@ int main (int argc, char *argv[])
                         if(xE.xbutton.x < winFrameAttribs.width - BUTTON_SIZE*2){
                             printf("Minimize area!\n");
                             
+                            /* XIconifyWindow */
+                            
                         }
                         /* maximize */
                         else if(xE.xbutton.x >= winFrameAttribs.width - BUTTON_SIZE*2&&
                                 xE.xbutton.x < winFrameAttribs.width - BUTTON_SIZE*1
                                ){
                             printf("Maximize area!\n");
+                            
+                            /* Get current window size/position and store in client */
+                            
+                            /* Resize the window*/
+                            XMoveResizeWindow(
+                                d, 
+                                parent,
+                                0, 0,    // x, y
+                                WidthOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2, // w, h
+                                HeightOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2
+                            );
+                            
+                            // Signal in the configure notify event we want this to run
+                            maximize_window = True;
+                            
                         }
                         /* close */
                         else if(xE.xbutton.x >= winFrameAttribs.width - BUTTON_SIZE*1&&
@@ -375,9 +396,71 @@ int main (int argc, char *argv[])
                changes.stack_mode = xE.xconfigurerequest.detail;
                XConfigureWindow(d, xE.xconfigurerequest.window, xE.xconfigurerequest.value_mask, &changes);
                printf("Resize: (%d, %d), X,Y: (%d,%d)\n", xE.xconfigurerequest.width, xE.xconfigurerequest.height, xE.xconfigurerequest.x, xE.xconfigurerequest.y);
+               
+                /* reconfigure child windows */
+                Window root, parent, *children;
+                unsigned int nchildren;
+                XQueryTree(
+                    d,
+                    xE.xconfigurerequest.window,
+                    &root,
+                    &parent,
+                    &children,
+                    &nchildren
+                );
+                int i;
+                for(i=0; i<nchildren; i++)
+                {
+                    printf("Child: %d\n", i);
+                }
+                
+                if(children) XFree(children);
 
 			}
 			break;
+            
+            case(ConfigureNotify):
+            {
+                printf("Configure notify request!\n");
+                if(maximize_window)
+                {
+                    printf("Maximize window happened, resetting boolean!\n");
+                    maximize_window = False;
+                    
+                    if(xE.xconfigure.window == None)
+                    {
+                        printf("Configure window None!\n");
+                        break;
+                    }
+                    
+                    /* Resize the children */
+                    
+                    /* Find the client matching the frame window maximized */
+                    WMClient *temp = clientHead;
+                    while(temp->next != NULL)
+                    {
+                        if(temp->frame == xE.xconfigure.window) break;
+                        temp = temp->next;
+                    }
+                    if(temp == NULL){
+                        printf("Configure Request: temp window NULL!\n");
+                        break;
+                    }
+                    if(temp->frame != xE.xconfigure.window){
+                        printf("Failed to find configure request frame!\n");
+                        break;
+                    }
+                    /* move the icons */
+                    XWindowAttributes frameAttribs;
+                    XGetWindowAttributes(d, temp->frame, &frameAttribs);
+                    XMoveWindow(d, temp->closeWin, frameAttribs.width-BUTTON_SIZE*1, 0);
+                    XMoveWindow(d, temp->maxWin, frameAttribs.width-BUTTON_SIZE*2, 0);
+                    XMoveWindow(d, temp->minWin, frameAttribs.width-BUTTON_SIZE*3, 0);
+                    /* resize the child window */
+                    XResizeWindow(d, temp->child, frameAttribs.width,frameAttribs.height);
+                }
+            }
+            break;
 
 			case(UnmapNotify):
 			{
@@ -446,10 +529,17 @@ int main (int argc, char *argv[])
 				
 			}
 			break;
+            
+            case(Expose):
+            {
+                printf("Expose Event!\n");
+            }
+            break;
 			
 			default:
 			{
 				printf("Wassup\n");
+                printf("Event type: %d\n", xE.type);
 			}
 		}
 }	while(run==1);

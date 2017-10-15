@@ -77,6 +77,10 @@ Bool reparent_window(Window child, Bool before_wm)
 	                             BORDER_WIDTH,                       // border size
 	                             WhitePixel(d, DefaultScreen(d)),    // border
 	                             BlackPixel(d, DefaultScreen(d)));   // background
+                                 
+    XWindowAttributes wa;
+    XGetWindowAttributes(d, c->frame, &wa);
+    printf("Override redirect: %d\n", wa.override_redirect);
 	
 	/* select events on the frame */
 	XSelectInput( d, 
