@@ -208,7 +208,8 @@ int main (int argc, char *argv[])
                         /* maximize */
                         else if(xE.xbutton.x >= winFrameAttribs.width - BUTTON_SIZE*2&&
                                 xE.xbutton.x < winFrameAttribs.width - BUTTON_SIZE*1
-                               ){
+                               )
+                        {
                             printf("Maximize area!\n");
                             
                             /* Get current window size/position and store in client */
@@ -221,33 +222,49 @@ int main (int argc, char *argv[])
 							if(temp != NULL){
 								XWindowAttributes winAttribs;
 								XGetWindowAttributes(d, temp->frame, &winAttribs);
-								temp->x = winAttribs.x;
-								temp->y = winAttribs.y;
-								temp->w = winAttribs.width;
-								temp->h = winAttribs.height;
+                                if(!temp->maximized)
+                                {
+                                    temp->x = winAttribs.x;
+                                    temp->y = winAttribs.y;
+                                    temp->w = winAttribs.width;
+                                    temp->h = winAttribs.height;
 
-								printf("Stored attributes: (%d,%d,%d,%d)\n", temp->x, temp->y, temp->w, temp->h);
+                                    printf("Stored attributes: (%d,%d,%d,%d)\n", temp->x, temp->y, temp->w, temp->h);
 
-								/* Draw the unmaximize icon instead */
-								//XClearWindow(d, temp->maxWin);
-								XSetWindowBackgroundPixmap(d, temp->maxWin, unmaxPixmap);
-								XFlush(d);	
-							}
+                                    /* Draw the unmaximize icon instead */
+                                    //XClearWindow(d, temp->maxWin);
+                                    //XSetWindowBackgroundPixmap(d, temp->maxWin, unmaxPixmap);
+                                    //XFlush(d);	
+                                    
+                                    /* Maximize the window */
+                                    XMoveResizeWindow(
+                                        d, 
+                                        parent,
+                                        0, 0,    // x, y
+                                        WidthOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2, // w, h
+                                        HeightOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2
+                                    );
+                                }
+                                else
+                                {
+                                    /* Restore the previous size and position of the
+                                     * window before it was maximized */
+                                    XMoveResizeWindow(
+                                        d, 
+                                        parent,
+                                        temp->x, temp->y,    // x, y
+                                        temp->w, temp->h // w, h
+                                    );
+                                }
+                                
+                                    // Signal in the configure notify event we want this to run
+                                    maximize_window = True;
+                                    // switch the status of the window's maximize status
+                                    temp->maximized = !temp->maximized;
+                            }
 							else{
 								printf("Failed to find window with same close icon!\n");
 							}
-                            
-                            /* Resize the window*/
-                            XMoveResizeWindow(
-                                d, 
-                                parent,
-                                0, 0,    // x, y
-                                WidthOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2, // w, h
-                                HeightOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2
-                            );
- 
-                            // Signal in the configure notify event we want this to run
-                            maximize_window = True;
                             
                         }
                         /* close */

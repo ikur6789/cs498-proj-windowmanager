@@ -25,6 +25,8 @@ typedef struct WMClient
 	unsigned int y;
 	unsigned int w; // the width and height before maximizing the window
 	unsigned int h;
+    
+    Bool maximized; // true if the window is fullscreen
 
 	struct WMClient *next;
 } WMClient;
