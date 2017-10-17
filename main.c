@@ -35,7 +35,8 @@ WMClient        *clientHead = NULL;
 /* files in reparent.c */
 // global variables
 //extern Pixmap minPixmap; // minimize image
-//extern Pixmap maxPixmap; // maximize image
+extern Pixmap maxPixmap; // maximize image
+extern Pixmap unmaxPixmap; // unmaximize image
 //extern Pixmap closePixmap; // close window image
 
 /**************************************/
@@ -136,6 +137,7 @@ int main (int argc, char *argv[])
     //loadPixmap("files/close.xpm");
     reparentLoadPixmaps("files/minimize.xpm",
                         "files/maximize.xpm",
+	                    "files/unmaximize.xpm",
                         "files/close.xpm");
                         
 
@@ -210,6 +212,30 @@ int main (int argc, char *argv[])
                             printf("Maximize area!\n");
                             
                             /* Get current window size/position and store in client */
+							WMClient *temp = clientHead;
+							while(temp != NULL)
+							{
+								if(temp->maxWin == xE.xbutton.subwindow) break;
+								temp = temp->next;
+							}
+							if(temp != NULL){
+								XWindowAttributes winAttribs;
+								XGetWindowAttributes(d, temp->frame, &winAttribs);
+								temp->x = winAttribs.x;
+								temp->y = winAttribs.y;
+								temp->w = winAttribs.width;
+								temp->h = winAttribs.height;
+
+								printf("Stored attributes: (%d,%d,%d,%d)\n", temp->x, temp->y, temp->w, temp->h);
+
+								/* Draw the unmaximize icon instead */
+								//XClearWindow(d, temp->maxWin);
+								XSetWindowBackgroundPixmap(d, temp->maxWin, unmaxPixmap);
+								XFlush(d);	
+							}
+							else{
+								printf("Failed to find window with same close icon!\n");
+							}
                             
                             /* Resize the window*/
                             XMoveResizeWindow(
@@ -219,7 +245,7 @@ int main (int argc, char *argv[])
                                 WidthOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2, // w, h
                                 HeightOfScreen(DefaultScreenOfDisplay(d)) - BORDER_WIDTH*2
                             );
-                            
+ 
                             // Signal in the configure notify event we want this to run
                             maximize_window = True;
                             

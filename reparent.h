@@ -20,6 +20,12 @@ typedef struct WMClient
     Window maxWin;
     Window closeWin;
 	Window child;  // the actual application content window
+
+	unsigned int x; // the x and y position before maximizing the window
+	unsigned int y;
+	unsigned int w; // the width and height before maximizing the window
+	unsigned int h;
+
 	struct WMClient *next;
 } WMClient;
 
@@ -34,6 +40,7 @@ Pixmap loadPixmap(const char *filename);
 /* to be called in main to load each pixmap */
 Bool reparentLoadPixmaps(const char *minimizePixmapName,
                          const char *maximizePixmapName,
+                         const char *unmaxPixmapName,
                          const char *closePixmapName);
 /* to be called before program exit */
 void reparentClosePixmaps(void);

@@ -16,6 +16,7 @@
 // global variables
 Pixmap minPixmap; // minimize image
 Pixmap maxPixmap; // maximize image
+Pixmap unmaxPixmap; // unmaximize image
 Pixmap closePixmap; // close window image
 
 // variables from main.c
@@ -65,6 +66,7 @@ Bool reparent_window(Window child, Bool before_wm)
 	}
 	c->next  = NULL;
 	c->child = child;
+	c->w= c->h = c->x = c->y=0; // initialize the position variables
 	
 	/* create the border window */
 	//frames[frames_index] = XCreateSimpleWindow(d,                                  // Display *d
@@ -290,11 +292,13 @@ Pixmap loadPixmap(const char *filename)
 
 Bool reparentLoadPixmaps(const char *minimizePixmapName,
                          const char *maximizePixmapName,
+                         const char *unmaxPixmapName,
                          const char *closePixmapName)
 {
     /* TODO - error check */
     minPixmap   = loadPixmap(minimizePixmapName);
     maxPixmap   = loadPixmap(maximizePixmapName);
+	unmaxPixmap = loadPixmap(unmaxPixmapName);
     closePixmap = loadPixmap(closePixmapName);
     
     return True;
@@ -304,5 +308,6 @@ void reparentClosePixmaps(void)
 {
     if(minPixmap) XFreePixmap(d, minPixmap);
     if(maxPixmap) XFreePixmap(d, maxPixmap);
+	if(unmaxPixmap) XFreePixmap(d, unmaxPixmap);
     if(closePixmap) XFreePixmap(d, closePixmap);
 }
