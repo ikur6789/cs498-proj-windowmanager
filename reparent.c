@@ -67,6 +67,7 @@ Bool reparent_window(Window child, Bool before_wm)
 	c->next  = NULL;
 	c->child = child;
     c->maximized = False;
+    c->minimized = False;
 	c->w= c->h = c->x = c->y=0; // initialize the position variables
 	
 	/* create the border window */

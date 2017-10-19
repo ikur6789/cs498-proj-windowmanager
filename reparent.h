@@ -27,6 +27,7 @@ typedef struct WMClient
 	unsigned int h;
     
     Bool maximized; // true if the window is fullscreen
+    Bool minimized; // true if the window is minimized
 
 	struct WMClient *next;
 } WMClient;

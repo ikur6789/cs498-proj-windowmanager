@@ -612,8 +612,26 @@ int main (int argc, char *argv[])
                 
                 /* TODO - make sure this is the right
                  * event type */
-                
-                /* Test resize to 0,0 */
+                 
+                 /* Find the client matching the frame window maximized */
+                WMClient *temp = clientHead;
+                while(temp->next != NULL)
+                {
+                    if(temp->frame == xE.xclient.window) break;
+                    temp = temp->next;
+                }
+                if(temp != NULL) 
+                {
+                    /* Make the windows invisible */
+                    XUnmapSubwindows(d, temp->frame);
+                    XUnmapWindow(d, temp->frame);
+                    
+                    /* set minimized to True*/
+                    temp->minimized = True;
+                }
+                else{
+                    printf("Failed to find client message (minimize) window!\n");
+                }
             }
             break;
 			
