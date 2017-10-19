@@ -202,8 +202,35 @@ int main (int argc, char *argv[])
                         if(xE.xbutton.x < winFrameAttribs.width - BUTTON_SIZE*2){
                             printf("Minimize area!\n");
                             
-                            /* XIconifyWindow */
                             
+                            /* Get current window size/position and store in client */
+							WMClient *temp = clientHead;
+							while(temp != NULL)
+							{
+								if(temp->minWin == xE.xbutton.subwindow) break;
+								temp = temp->next;
+							}
+							if(temp != NULL){
+								XWindowAttributes winAttribs;
+								XGetWindowAttributes(d, temp->frame, &winAttribs);
+                                
+                                /* store current position */
+                                temp->x = winAttribs.x;
+                                temp->y = winAttribs.y;
+                                temp->w = winAttribs.width;
+                                temp->h = winAttribs.height;
+                                
+                                /* Iconify the window */
+                                XIconifyWindow(d, parent, DefaultScreen(d));
+                                printf("After iconify window!\n");
+                                
+                            }
+                            else{
+                                printf("Failed to find client with the same minimize icon!\n");
+                            }
+                            
+                            // don't do the raise window code and stuff
+                            break;
                         }
                         /* maximize */
                         else if(xE.xbutton.x >= winFrameAttribs.width - BUTTON_SIZE*2&&
@@ -576,6 +603,17 @@ int main (int argc, char *argv[])
             case(Expose):
             {
                 printf("Expose Event!\n");
+            }
+            break;
+            
+            case(ClientMessage):
+            {
+                printf("Client Message!\n");
+                
+                /* TODO - make sure this is the right
+                 * event type */
+                
+                /* Test resize to 0,0 */
             }
             break;
 			
