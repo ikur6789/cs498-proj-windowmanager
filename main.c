@@ -127,6 +127,13 @@ int main (int argc, char *argv[])
 	xStart.subwindow = None;
 	Window task_w; //X11 window for taskbar
 	task_w = start_taskbar(task_w);
+	//Drawing a rectangle to the taskbar for testing purposes
+	GC window_min = DefaultGC(d, DefaultScreen(d));
+	XGCValues send_vals;
+	send_vals.fill_rule=FillSolid;
+	send_vals.foreground=1;
+	XChangeGC(d, window_min, GCForeground, &send_vals);
+	XFillRectangle(d, task_w, window_min, 25, 5, 20, 20);
 	XSelectInput(d, task_w, 0);
 	int run = 1;
 	/*For you Confer <3*/
