@@ -1,10 +1,12 @@
-X11-Capstone.workspace
-498-capstone.project
+*.workspace
+*.project
 .clang
 .codelite
+*.swp
 Debug
 X11-Capstone.workspace.layout
-498-capstone.mk
-498-capstone.txt
+*.mk
+*.txt
 Makefile
 main
+main_reference.c
