@@ -165,7 +165,7 @@ int main (int argc, char *argv[])
 			//Check if a key was pressed inside a window
 			case(KeyPress): 
 			{      
-				if(xE.xkey.subwindow != None){}
+				if(xE.xkey.subwindow != None)
 					//Make window with button pressed active
 					XRaiseWindow(d, xE.xkey.subwindow);
 			}
