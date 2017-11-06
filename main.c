@@ -126,6 +126,10 @@ int main (int argc, char *argv[])
     // True when we maximize a window, otherwise
     // Configure Notify will run when we move the window
     Bool maximize_window = False;
+    
+    // True when minimizing a window, so we can run in
+    // ClientMessage without messing up other event types
+    Bool minimizing = False;
 
 	// Create connection to the X server
 	openWindow();
@@ -161,7 +165,7 @@ int main (int argc, char *argv[])
 			//Check if a key was pressed inside a window
 			case(KeyPress): 
 			{      
-				if(xE.xkey.subwindow != None)
+				if(xE.xkey.subwindow != None){}
 					//Make window with button pressed active
 					XRaiseWindow(d, xE.xkey.subwindow);
 			}
@@ -223,6 +227,10 @@ int main (int argc, char *argv[])
                                 /* Iconify the window */
                                 XIconifyWindow(d, parent, DefaultScreen(d));
                                 printf("After iconify window!\n");
+                                
+                                /* Set minimizing so we will run the
+                                 * code in ClientMessage */
+                                minimizing = True;
                                 
                             }
                             else{
@@ -316,13 +324,13 @@ int main (int argc, char *argv[])
                             break;
                         }
                     }
-                    printf("Before xgrabpointer!\n");
+                    //printf("Before xgrabpointer!\n");
 					// Take command of the mouse cursor, looking for motion and button release events
-					XGrabPointer(d, xE.xbutton.subwindow, True, 
+					/*XGrabPointer(d, xE.xbutton.subwindow, True, 
 						PointerMotionMask|ButtonReleaseMask,
 						GrabModeAsync, GrabModeAsync,
 						None, None, CurrentTime
-					);
+					);*/
                     
                     printf("Before XGetWindowAttributes!\n");
 					//Store the attributes of the event window into xA (Window Attributes Struct)
@@ -336,10 +344,10 @@ int main (int argc, char *argv[])
                     // Raise parent window (its frame)
 
 					// raise the window then its child
-                    printf("Before XRaiseWindow!\n");
+                    //printf("Before XRaiseWindow!\n");
 					XRaiseWindow(d, parent);
-					XRaiseWindow(d, xE.xbutton.subwindow);
-                    printf("After XRaiseWindow!\n");
+					//XRaiseWindow(d, xE.xbutton.subwindow);
+                    //printf("After XRaiseWindow!\n");
 					if(children) XFree(children);
 					
 					// set that we currently could be moving
@@ -353,11 +361,11 @@ int main (int argc, char *argv[])
 	             printf("Xbutton window button press!\n");
                  printf("X: %d, Y: %d\n", xE.xbutton.x, xE.xbutton.y);
 
-				XGrabPointer(d, xE.xbutton.window, True, 
+				/*XGrabPointer(d, xE.xbutton.window, True, 
 					PointerMotionMask|ButtonReleaseMask,
 					GrabModeAsync, GrabModeAsync,
 					None, None, CurrentTime
-				);
+				);*/
 	 
 	             // make the window frame pressed bool True
 	             moving_window = True;
@@ -386,8 +394,8 @@ int main (int argc, char *argv[])
 				}
 				/* raise the main child window instead of the frame */
 				if(temp != NULL){
-					XRaiseWindow(d, temp->child);
-					printf("Raised frame child!\n");
+					//XRaiseWindow(d, temp->child);
+					//printf("Raised frame child!\n");
 				}
 	 
 	         	}
@@ -612,25 +620,31 @@ int main (int argc, char *argv[])
                 
                 /* TODO - make sure this is the right
                  * event type */
-                 
-                 /* Find the client matching the frame window maximized */
-                WMClient *temp = clientHead;
-                while(temp->next != NULL)
+                // EDIT - or be lazy and add another boolean
+                if(minimizing) 
                 {
-                    if(temp->frame == xE.xclient.window) break;
-                    temp = temp->next;
-                }
-                if(temp != NULL) 
-                {
-                    /* Make the windows invisible */
-                    XUnmapSubwindows(d, temp->frame);
-                    XUnmapWindow(d, temp->frame);
+                    /* reset the boolean */
+                    minimizing = False;
                     
-                    /* set minimized to True*/
-                    temp->minimized = True;
-                }
-                else{
-                    printf("Failed to find client message (minimize) window!\n");
+                    /* Find the client matching the frame window maximized */
+                    WMClient *temp = clientHead;
+                    while(temp->next != NULL)
+                    {
+                        if(temp->frame == xE.xclient.window) break;
+                        temp = temp->next;
+                    }
+                    if(temp != NULL) 
+                    {
+                        /* Make the windows invisible */
+                        XUnmapSubwindows(d, temp->frame);
+                        XUnmapWindow(d, temp->frame);
+                        
+                        /* set minimized to True*/
+                        temp->minimized = True;
+                    }
+                    else{
+                        printf("Failed to find client message (minimize) window!\n");
+                    }
                 }
             }
             break;
