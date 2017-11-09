@@ -23,6 +23,7 @@ void openWindow(void);
 void setEvents(void);
 void processEvents(void);
 Window start_taskbar(Window pass);
+Window start_window(Window pass, Window tasb_bar);
 
 /**************************************/
 /**        Global Variables          **/
@@ -33,6 +34,8 @@ XButtonEvent		xStart;
 XEvent 				xE;
 WMClient        	*clientHead = NULL;
 GC 					gc_taskbar;
+Window 				task_bar; //X11 window for taskbar
+
 
 /* files in reparent.c */
 // global variables
@@ -145,17 +148,22 @@ int main (int argc, char *argv[])
 
 	//Set event window (xStart) to nothing
 	xStart.subwindow = None;
-	Window task_w; //X11 window for taskbar
-	task_w = start_taskbar(task_w);
+	
+	task_bar = start_taskbar(task_bar);
+	Window task_win;
+	task_win = start_window(task_win, task_bar);
+	
+	
 	//Drawing a rectangle to the taskbar for testing purposes
 	GC window_min = DefaultGC(d, DefaultScreen(d));
 	XGCValues send_vals;
 	send_vals.fill_rule=FillSolid;
 	send_vals.foreground=1;
 	XChangeGC(d, window_min, GCForeground, &send_vals);
-	XFillRectangle(d, task_w, window_min, 25, 5, 20, 20);
-	XSelectInput(d, task_w, 0);
+	XFillRectangle(d, task_bar, window_min, 25, 5, 20, 20);
+	XSelectInput(d, task_bar, 0);
 	int run = 1;
+
 	/*For you Confer <3*/
 	do
 	{
@@ -670,6 +678,18 @@ Window start_taskbar(Window pass)
 	XSetForeground(d, gc_taskbar, BlackPixel(d, DefaultScreen(d)));
 	XClearWindow(d, pass);
 	XMapRaised(d, pass);
+
+	return pass;
+}
+
+Window start_window(Window pass, Window task_bar)
+{
+	XWindowAttributes 	get_task_attrbs;
+	XGetWindowAttributes(d, task_bar, &get_task_attrbs);
+	unsigned task_win_h = ((get_task_attrbs.height*3)/4);
+	printf("\nHeight of taskbar %u\n", task_win_h);
+	pass = XCreateSimpleWindow(d, task_bar, 1, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0x4286f4);
+	XMapWindow(d, pass);
 
 	return pass;
 }
