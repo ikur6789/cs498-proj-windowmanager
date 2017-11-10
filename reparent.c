@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 // counter and Windows to be used as window borders
 //int frames_index=0;
@@ -18,13 +19,36 @@ Pixmap minPixmap; // minimize image
 Pixmap maxPixmap; // maximize image
 Pixmap unmaxPixmap; // unmaximize image
 Pixmap closePixmap; // close window image
+Pixmap taskPixmap;
 
 // variables from main.c
 extern Display *d;
 extern WMClient *clientHead;/* the start of the client linked list */
-
+extern Window   task_bar; //task bar window for reparenting
+//extern XWindowAttributes get_task_attrbs;
 /* creates a frame for the input child window and reparents
  * it to the created frame */
+
+Window make_task_window(int x_pos);
+
+Window make_task_window(int x_pos)
+{
+  Window send;
+  XWindowAttributes   get_task_attrbs;
+  XGetWindowAttributes(d, task_bar, &get_task_attrbs);
+  unsigned task_win_h = ((get_task_attrbs.height*3)/4);
+  printf("\nHeight of taskbar %u\n", task_win_h);
+  send = XCreateSimpleWindow(d, task_bar, x_pos, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);
+  XWindowAttributes   pass_attributes;
+  XGetWindowAttributes(d, send, &pass_attributes);
+  GC gc_taskbar_win = XCreateGC(d, send, 0,0);
+  XDrawString(d, send, gc_taskbar_win, 0, 0, "Win 1", strlen("Win 1"));
+  XMapWindow(d, send);
+
+  return send;
+}
+
+
 Bool reparent_window(Window child, Bool before_wm)
 {
 	XWindowAttributes a; // get info about the child window to create
@@ -119,7 +143,8 @@ Bool reparent_window(Window child, Bool before_wm)
                                     BUTTON_SIZE,              // window height
                                     0,                       // border size
                                     WhitePixel(d, DefaultScreen(d)),    // border
-                                    BlackPixel(d, DefaultScreen(d)));   // background        
+                                    BlackPixel(d, DefaultScreen(d)));   // background   
+    c->task_icon = None;//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);     
     /* give each button window their image */
     XSetWindowBackgroundPixmap(d, c->minWin, minPixmap);
     XSetWindowBackgroundPixmap(d, c->maxWin, maxPixmap);
@@ -313,3 +338,4 @@ void reparentClosePixmaps(void)
 	if(unmaxPixmap) XFreePixmap(d, unmaxPixmap);
     if(closePixmap) XFreePixmap(d, closePixmap);
 }
+
