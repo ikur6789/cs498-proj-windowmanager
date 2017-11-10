@@ -155,7 +155,7 @@ int main (int argc, char *argv[])
 	
 	task_bar = start_taskbar(task_bar);
 	Window task_win;
-	task_win = start_window(task_win, task_bar, 1, 0x08f4e0);
+	task_win = start_window(task_win, task_bar, 1, 0x4286f4);
 	Window task_win2 = start_window(task_win, task_bar, 50, 0x0abcde);
 	XDrawString(d, task_win2, DefaultGC(d, DefaultScreen(d)), 0, 0, "Win 1", strlen("Win 1"));
 	
