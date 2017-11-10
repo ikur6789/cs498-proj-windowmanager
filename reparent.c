@@ -42,7 +42,7 @@ Window make_task_window(int x_pos)
   XWindowAttributes   pass_attributes;
   XGetWindowAttributes(d, send, &pass_attributes);
   GC gc_taskbar_win = XCreateGC(d, send, 0,0);
-  XDrawString(d, send, gc_taskbar_win, "Win 1", strlen("Win 1"));
+  XDrawString(d, send, gc_taskbar_win, 0, 0, "Win 1", strlen("Win 1"));
   XMapWindow(d, send);
 
   return send;
@@ -144,7 +144,7 @@ Bool reparent_window(Window child, Bool before_wm)
                                     0,                       // border size
                                     WhitePixel(d, DefaultScreen(d)),    // border
                                     BlackPixel(d, DefaultScreen(d)));   // background   
-    c->task_icon = make_task_window(21);//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);     
+    c->task_icon = None;//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);     
     /* give each button window their image */
     XSetWindowBackgroundPixmap(d, c->minWin, minPixmap);
     XSetWindowBackgroundPixmap(d, c->maxWin, maxPixmap);

@@ -7,7 +7,7 @@
 #include <X11/keysymdef.h>
 #include <stdio.h>
 #include <stdlib.h>      //Used for exit command
-
+#include <string.h>
 #include "reparent.h"
 #include "destroy.h"
 
@@ -23,7 +23,7 @@ void openWindow(void);
 void setEvents(void);
 void processEvents(void);
 Window start_taskbar(Window pass);
-Window start_window(Window pass, Window tasb_bar);
+Window start_window(Window pass, Window task_bar, int x_pos, unsigned long color);
 
 /**************************************/
 /**        Global Variables          **/
@@ -151,8 +151,9 @@ int main (int argc, char *argv[])
 	
 	task_bar = start_taskbar(task_bar);
 	Window task_win;
-	task_win = start_window(task_win, task_bar);
-	
+	task_win = start_window(task_win, task_bar, 1, 0x08f4e0);
+	Window task_win2 = start_window(task_win, task_bar, 50, 0x0abcde);
+	XDrawString(d, task_win2, DefaultGC(d, DefaultScreen(d)), 0, 0, "Win 1", strlen("Win 1"));
 	
 	//Drawing a rectangle to the taskbar for testing purposes
 	GC window_min = DefaultGC(d, DefaultScreen(d));
@@ -623,6 +624,7 @@ int main (int argc, char *argv[])
             case(Expose):
             {
                 printf("Expose Event!\n");
+                XDrawString(d, task_win2, DefaultGC(d, DefaultScreen(d)), 5, 15, "Win 1", strlen("Win 1"));
             }
             break;
             
@@ -682,13 +684,13 @@ Window start_taskbar(Window pass)
 	return pass;
 }
 
-Window start_window(Window pass, Window task_bar)
+Window start_window(Window pass, Window task_bar, int x_pos, unsigned long color)
 {
 	XWindowAttributes 	get_task_attrbs;
 	XGetWindowAttributes(d, task_bar, &get_task_attrbs);
 	unsigned task_win_h = ((get_task_attrbs.height*3)/4);
 	printf("\nHeight of taskbar %u\n", task_win_h);
-	pass = XCreateSimpleWindow(d, task_bar, 1, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0x4286f4);
+	pass = XCreateSimpleWindow(d, task_bar, x_pos, ((get_task_attrbs.height)/4), 40, task_win_h, 0, 0, color);
 	XMapWindow(d, pass);
 
 	return pass;
