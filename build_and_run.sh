@@ -22,8 +22,8 @@
 set -e
 
 # 1. Build binary.
-#make 
-#gcc main.c -o main -l X11
+# make 
+
 # 2. Run.
 #
 # We need to specify the full path to Xephyr, as otherwise xinit will not

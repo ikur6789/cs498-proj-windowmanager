@@ -1,5 +1,0 @@
-HeightOfScreen(DefaultScreen(d))
-WidthOfScreen(DefaultScreen(d))
-
-Returns the heigh of the screen in pixels
-Returns the width of the screen in pixels

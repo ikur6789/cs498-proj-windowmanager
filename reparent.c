@@ -1,243 +1,375 @@
-/* implementation file for
- * reparenting windows when they send a map request 
- * (want to be displayed on the screen) */
+/* reframes given windows */
 
 #include "reparent.h"
-#include <X11/Xutil.h>
-#include <X11/xpm.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
 
-// counter and Windows to be used as window borders
-//int frames_index=0;
-//Window frames[10];
+// variables from main.c
+extern Display *d;
+extern WMClient *clientHead; // the head of the WMClient linked list
+extern Window   task_bar; //task bar window for reparenting
 
 // global variables
 Pixmap minPixmap; // minimize image
 Pixmap maxPixmap; // maximize image
 Pixmap unmaxPixmap; // unmaximize image
 Pixmap closePixmap; // close window image
-Pixmap taskPixmap;
 
-// variables from main.c
-extern Display *d;
-extern WMClient *clientHead;/* the start of the client linked list */
-extern Window   task_bar; //task bar window for reparenting
-//extern XWindowAttributes get_task_attrbs;
-/* creates a frame for the input child window and reparents
- * it to the created frame */
+unsigned long  titleBarColor = 0x000000; // color of the titleBar
+unsigned long  borderColor   = 0x000000; // color of the window border
 
+// function prototypes
 Window make_task_window(int x_pos);
 
-Window make_task_window(int x_pos)
+Bool reparentWindow(Window child, Bool before_wm)
 {
-  Window send;
-  XWindowAttributes   get_task_attrbs;
-  XGetWindowAttributes(d, task_bar, &get_task_attrbs);
-  unsigned task_win_h = ((get_task_attrbs.height*3)/4);
-  printf("\nHeight of taskbar %u\n", task_win_h);
-  send = XCreateSimpleWindow(d, task_bar, x_pos, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);
-  XWindowAttributes   pass_attributes;
-  XGetWindowAttributes(d, send, &pass_attributes);
-  GC gc_taskbar_win = XCreateGC(d, send, 0,0);
-  XDrawString(d, send, gc_taskbar_win, 0, 0, "Win 1", strlen("Win 1"));
-  XMapWindow(d, send);
+    WMClient *c = NULL; // our current client to work on
 
-  return send;
-}
+    /* create a new entry in the list */
+    if(clientHead == NULL) {
+        clientHead = (WMClient *)malloc(sizeof(WMClient));
+        /* TODO - test for NULL */
 
+        c = clientHead;
+    }
+    else {
+        /* get the last entry in the client list */
+        WMClient *temp = clientHead;
+        while(temp->next != NULL)
+            temp = temp->next;
 
-Bool reparent_window(Window child, Bool before_wm)
-{
-	XWindowAttributes a; // get info about the child window to create
-	                     // its border
+        c = (WMClient *)malloc(sizeof(WMClient));
+        /* TODO - test for NULL */
 
-	WMClient *c; // placeholder for the new entry in the window client list
-	  
-	/* moved as defines in reparent.h; used to resize windows */                   
-	//const int border_width = 2; // border size of the parent window
-	//const int title_height = 20; // size of the title bar
-	
-	/* get child information */
-	XGetWindowAttributes(d, child, &a);
-	
-	/* exit if we have too many windows cuz no linked list yet */
-	/*if(frames_index >= 10){
-		fprintf(stderr, "MORE THAN 10 Windows AAAAHHH!\n");
-		exit(0);
-	}*/
-
-	/* create a new entry in the list */
-	if(clientHead == NULL) {
-		clientHead = (WMClient *)malloc(sizeof(WMClient));
-		/* TODO - test for NULL */
-
-		c = clientHead;
-	}
-	else {
-		/* get the last entry in the client list */
-		WMClient *temp = clientHead;
-		while(temp->next != NULL)
-			temp = temp->next;
-
-		c = (WMClient *)malloc(sizeof(WMClient));
-		/* TODO - test for NULL */
-
-		/* assign the new client structure to the end of the list */
-		temp->next = c;
-	}
-	c->next  = NULL;
-	c->child = child;
+        /* assign the new client structure to the end of the list */
+        temp->next = c;
+    }
+    c->next  = NULL;
+    c->child = child;
     c->maximized = False;
     c->minimized = False;
-	c->w= c->h = c->x = c->y=0; // initialize the position variables
-	
-	/* create the border window */
-	//frames[frames_index] = XCreateSimpleWindow(d,                                  // Display *d
-	c->frame = XCreateSimpleWindow(d,
-	                             RootWindow(d, DefaultScreen(d)),    // Display *parent
-	                             0,                                // x coord
-	                             0,                                // y coord
-	                             a.width+(BORDER_WIDTH),           // window width
-	                             a.height+TITLE_HEIGHT,              // window height
-	                             BORDER_WIDTH,                       // border size
-	                             WhitePixel(d, DefaultScreen(d)),    // border
-	                             BlackPixel(d, DefaultScreen(d)));   // background
-                                 
-    XWindowAttributes wa;
-    XGetWindowAttributes(d, c->frame, &wa);
-    printf("Override redirect: %d\n", wa.override_redirect);
-	
-	/* select events on the frame */
-	XSelectInput( d, 
-	              //frames[frames_index], 
-	              c->frame,
-	              SubstructureRedirectMask | SubstructureNotifyMask );
+    c->w = c->h = c->x = c->y=0; // initialize the position variables
+    
+    // Get window info
+    XWindowAttributes childWinInfo;
+    XGetWindowAttributes(d, child, &childWinInfo);
+    
+    // if the window was created before the wm started,
+    // frame only if visible and doesn't set override redirect
+    if(before_wm) {
+        if(childWinInfo.override_redirect ||
+           childWinInfo.map_state != IsViewable) {
+            printf("Before WM & override_redirect OR mapstate != IsViewable!\n");
+            return True;
+        }
+    }
+    
+    // create the frame
+    c->frame = XCreateSimpleWindow(
+        d,
+        RootWindow(d, DefaultScreen(d)),
+        childWinInfo.x,
+        childWinInfo.y,
+        childWinInfo.width,
+        childWinInfo.height+TITLE_HEIGHT,
+        BORDER_WIDTH,
+        borderColor,      // TODO - change this to the read in border color
+        0x000000       // TODO - change to frame bg color
+    );
+    
+    // create the title bar
+    c->titleBar = XCreateSimpleWindow(
+        d,
+        c->frame,
+        0,
+        0,
+        childWinInfo.width - BUTTON_SIZE*3, // give room for the 3 buttons
+        TITLE_HEIGHT,
+        0,
+        0x000000,      // TODO - change this to the read in border color
+        titleBarColor       // TODO - change to frame bg color
+    );
     
     /* Create each button window */
     c->minWin = XCreateSimpleWindow(d,
 	                             c->frame,    // Display *parent
-	                             (a.width+BORDER_WIDTH)-(BUTTON_SIZE*3), // x coord
+	                             childWinInfo.width-(BUTTON_SIZE*3), // x coord
 	                             0,                                // y coord
 	                             BUTTON_SIZE,           // window width
 	                             BUTTON_SIZE,              // window height
 	                             0,                       // border size
 	                             WhitePixel(d, DefaultScreen(d)),    // border
-	                             BlackPixel(d, DefaultScreen(d)));   // background
+	                             0x00FF00);   // background
 	c->maxWin = XCreateSimpleWindow(d,
 	                             c->frame,    // Display *parent
-	                             (a.width+BORDER_WIDTH)-(BUTTON_SIZE*2), // x coord
+	                             childWinInfo.width-(BUTTON_SIZE*2), // x coord
 	                             0,                                // y coord
 	                             BUTTON_SIZE,           // window width
 	                             BUTTON_SIZE,              // window height
 	                             0,                       // border size
 	                             WhitePixel(d, DefaultScreen(d)),    // border
-	                             BlackPixel(d, DefaultScreen(d)));   // background      
+	                             0x00FF00);   // background      
     c->closeWin = XCreateSimpleWindow(d,
                                     c->frame,    // Display *parent
-                                    (a.width+BORDER_WIDTH)-(BUTTON_SIZE*1), // x coord
+                                    childWinInfo.width-(BUTTON_SIZE*1), // x coord
                                     0,                                // y coord
                                     BUTTON_SIZE,           // window width
                                     BUTTON_SIZE,              // window height
                                     0,                       // border size
                                     WhitePixel(d, DefaultScreen(d)),    // border
-                                    BlackPixel(d, DefaultScreen(d)));   // background   
-    c->task_icon = None;//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);     
+                                    0x00FF00);   // background        
+    
+    c->task_icon = None;//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);                                
+    
     /* give each button window their image */
     XSetWindowBackgroundPixmap(d, c->minWin, minPixmap);
     XSetWindowBackgroundPixmap(d, c->maxWin, maxPixmap);
     XSetWindowBackgroundPixmap(d, c->closeWin, closePixmap);
-	/* restores the child if we crash somehow */
-	XAddToSaveSet(d, child);
-	
-	/* assuming last thing needed to do */
-	XReparentWindow(d,                        // Display *d 
-	                child,                    // Window w
-	                //frames[frames_index],     // Window parent
-	                c->frame,
-	                //BORDER_WIDTH-(BORDER_WIDTH/2),             // int x - x position in new parent window
-	                0,             // int x - x position in new parent window
-	                TITLE_HEIGHT);            // int y - y position in new parent window
-
-
-	  // 9. Grab universal window management actions on client window.
-  //   a. Move windows with alt + left button.
-  XGrabButton(
-      d,
-      Button1,
-      None,
-      child,
-      False,
-      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-      GrabModeAsync,
-      GrabModeAsync,
-      None,
-      None);
-/*
-  //   b. Resize windows with alt + right button.
-  XGrabButton(
-      d,
-      Button3,
-      Mod1Mask,
-      child,
-      False,
-      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-      GrabModeAsync,
-      GrabModeAsync,
-      None,
-      None);
-  //   c. Kill windows with alt + f4.
-  XGrabKey(
-      d,
-      XKeysymToKeycode(d, XK_F4),
-      Mod1Mask,
-      child,
-      False,
-      GrabModeAsync,
-      GrabModeAsync);
-  //   d. Switch windows with alt + tab.
-  XGrabKey(
-      d,
-      XKeysymToKeycode(d, XK_Tab),
-      Mod1Mask,
-      child,
-      False,
-      GrabModeAsync,
-      GrabModeAsync);
-*/
-// Grab input to frame
-XGrabButton(
-    d,
-    1,
-    None,
-    //frames[frames_index],
-	c->frame,
-    //False,
-    True,
-    //ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | PointerMotionMask,
-    //ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
-    ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
-    GrabModeAsync,
-    GrabModeAsync,
-    //None,
-    //frames[frames_index],
-	c->frame,
-    None
-);
-
-    /* test loading a button window */
-    //loadPixmap("files/close.xpm");
-
-
-	/* map the parent window */
-	//XMapWindow(d, frames[frames_index]);
-	//XMapWindow(d, c->frame);
-    XMapWindow(d, c->frame); //map the frame and the buttons
+    
+    //XMapWindow(d, c->minWin);
+    //XMapWindow(d, c->maxWin);
+    //XMapWindow(d, c->closeWin);
+    
+    /* Grab a the mouse click on any of the min/max/close windows */
+    XGrabButton(
+        d,
+        Button1,
+        //Mod1Mask,
+        None,
+        c->minWin,
+        False,
+        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+        GrabModeAsync,
+        GrabModeAsync,
+        None,
+        None
+    );
+    XGrabButton(
+        d,
+        Button1,
+        //Mod1Mask,
+        None,
+        c->maxWin,
+        False,
+        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+        GrabModeAsync,
+        GrabModeAsync,
+        None,
+        None
+    );
+    XGrabButton(
+        d,
+        Button1,
+        //Mod1Mask,
+        None,
+        c->closeWin,
+        False,
+        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+        GrabModeAsync,
+        GrabModeAsync,
+        None,
+        None
+    );
+    
+    // map the child window to our client
+    c->child = child;
+    
+    // select input on the frame
+    XSelectInput(
+        d,
+        c->frame,
+        SubstructureNotifyMask | SubstructureRedirectMask
+    );
+    
+    // Grab left mouse click on the title bar
+    XGrabButton(
+        d,
+        Button1,
+        //Mod1Mask,
+        None,
+        c->titleBar,
+        False,
+        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+        GrabModeAsync,
+        GrabModeAsync,
+        None,
+        None
+    );
+    
+    // add the child to save set to restore if we crash
+    XAddToSaveSet(d, child);
+    
+    // reparent the child window to our frame
+    XReparentWindow(
+        d,
+        child,
+        c->frame,
+        0, TITLE_HEIGHT
+    );
+    
+    // display the frame
+    //XMapWindow(d, c->frame);
+    //XMapWindow(d, c->titleBar);
+    
+    // Grab buttons on the child window
+    //   a. Move windows with alt + left button.
+    XGrabButton(
+        d,
+        Button1,
+        Mod1Mask,
+        child,
+        False,
+        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+        GrabModeAsync,
+        GrabModeAsync,
+        None,
+        None);
+    //   b. Resize windows with alt + right button.
+    XGrabButton(
+        d,
+        Button3,
+        Mod1Mask,
+        child,
+        False,
+        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+        GrabModeAsync,
+        GrabModeAsync,
+        None,
+        None);
+    //   c. Kill windows with alt + f4.
+    XGrabKey(
+        d,
+        XKeysymToKeycode(d, XK_F4),
+        Mod1Mask,
+        child,
+        False,
+        GrabModeAsync,
+        GrabModeAsync);
+    //   d. Switch windows with alt + tab.
+    XGrabKey(
+        d,
+        XKeysymToKeycode(d, XK_Tab),
+        Mod1Mask,
+        child,
+        False,
+        GrabModeAsync,
+        GrabModeAsync);
+        
+    // Get the name of the window
+    char *childName = NULL;
+    if(XFetchName(d, child, &childName)) {
+        printf("Reparenting Window! Name: %s\n", childName);
+    }
+    strcpy(c->title, childName);
+        
+    // test drawing the title to the titleBar
+    /*XDrawString(
+        d, 
+        c->titleBar, 
+        DefaultGC(d, DefaultScreen(d)),
+        10, 10,
+        c->title,
+        strlen(c->title)
+    );*/
+    
+    //XWindowAttributes fAttribs; // frame attributes
+    //XGetWindowAttributes(d, temp->frame, &fAttribs);
+    XDrawString(
+        d,
+        c->titleBar,                                        // Drawable d
+        DefaultGC(d, DefaultScreen(d)),                        // GC
+        (childWinInfo.width / 2) - strlen(c->title)*CHAR_WIDTH, // x
+        (TITLE_HEIGHT / 2) + CHAR_WIDTH/2,                                      // y
+        c->title,                                           // string
+        strlen(c->title)                                    // length of string
+    );
+    
+    if(childName) XFree(childName);
+    
+    // display all child windows/window frame
+    XMapWindow(d, c->frame);
     XMapSubwindows(d, c->frame);
-	//frames_index++;
-	return True;
+    
+    return True;
+}
+
+Bool unparentWindow(Window child)
+{
+    // Find the client of the corresponding child window
+    WMClient *temp = clientHead;
+    while(temp != NULL){
+        if(temp->child == child)
+            break;
+        temp = temp->next;
+    }
+    if(temp == NULL) {
+        printf("unparentwindow: failed to find child window!\n");
+        return False;
+    }
+    
+    // Unmap the frame
+    XUnmapWindow(d, temp->frame);
+    
+    // reparent the client window to the root window
+    XReparentWindow(
+        d,
+        child,
+        RootWindow(d, DefaultScreen(d)),
+        0,0
+    );
+    
+    // remove the app window from the save set since we aren't reparenting it
+    XRemoveFromSaveSet(d, child);
+    
+    // delete the client and all of its subwindows
+    deleteClient(child);
+    
+    return True;
+}
+
+Bool deleteClient(Window child)
+{
+    WMClient *temp = clientHead;
+    WMClient *head = temp;
+    WMClient *caboose = NULL;
+    if(temp!= NULL) caboose = temp->next;
+    
+    /* Make temp equal to the client with the sent child */
+    while(temp != NULL){
+
+        //if(temp->frame == parent) break;
+        if(temp->child == child) break;
+        /* keep track of the entry before and after temp */
+        head = temp;
+        temp = temp->next;
+        if(temp != NULL) caboose = temp->next;
+        else             caboose = NULL;
+    }
+    
+    /* If we found a matching client with the given child */
+    if(temp != NULL){
+        /* Destroy the frame of the window (its parent) 
+         * and free memory */
+        printf("Before destroy subwindows!\n");
+        XDestroySubwindows(d, temp->frame);
+        
+        printf("Before destroy frame!\n");
+        XDestroyWindow(d, temp->frame);
+        printf("After destroy frame!\n");
+    
+        /* reconnect the previous and after
+         * WMclients in the list */
+
+        if(temp != clientHead) head->next = caboose;
+        else                   clientHead = caboose;
+
+        free(temp);
+
+    }
+    /* We didn't find the child, send error */
+    else{
+        printf("deleteClient: Failed to find Client with sent child!\n");
+    }
+    
+    return True;
 }
 
 /* test loading a pixmap */
@@ -248,12 +380,12 @@ Pixmap loadPixmap(const char *filename)
     Pixmap mask;
     XpmAttributes xpmattribs;
     
-    Window w;
+    //Window w;
     
     printf("Before create simple window!\n");
     
     /* create the window */
-    w = XCreateSimpleWindow(
+    /*w = XCreateSimpleWindow(
         d,
         RootWindow(d, DefaultScreen(d)),
         0,0, // x, y
@@ -261,7 +393,7 @@ Pixmap loadPixmap(const char *filename)
         0,   // border width,
         BlackPixel(d, DefaultScreen(d)),
         WhitePixel(d, DefaultScreen(d))
-    );
+    );*/
     
     /* set pixmap attributes */
     xpmattribs.visual = DefaultVisual(d, DefaultScreen(d));
@@ -325,7 +457,7 @@ Bool reparentLoadPixmaps(const char *minimizePixmapName,
     /* TODO - error check */
     minPixmap   = loadPixmap(minimizePixmapName);
     maxPixmap   = loadPixmap(maximizePixmapName);
-	unmaxPixmap = loadPixmap(unmaxPixmapName);
+    unmaxPixmap = loadPixmap(unmaxPixmapName);
     closePixmap = loadPixmap(closePixmapName);
     
     return True;
@@ -335,7 +467,23 @@ void reparentClosePixmaps(void)
 {
     if(minPixmap) XFreePixmap(d, minPixmap);
     if(maxPixmap) XFreePixmap(d, maxPixmap);
-	if(unmaxPixmap) XFreePixmap(d, unmaxPixmap);
+    if(unmaxPixmap) XFreePixmap(d, unmaxPixmap);
     if(closePixmap) XFreePixmap(d, closePixmap);
 }
 
+Window make_task_window(int x_pos)
+{
+  Window send;
+  XWindowAttributes   get_task_attrbs;
+  XGetWindowAttributes(d, task_bar, &get_task_attrbs);
+  unsigned task_win_h = ((get_task_attrbs.height*3)/4);
+  printf("\nHeight of taskbar %u\n", task_win_h);
+  send = XCreateSimpleWindow(d, task_bar, x_pos, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);
+  XWindowAttributes   pass_attributes;
+  XGetWindowAttributes(d, send, &pass_attributes);
+  GC gc_taskbar_win = XCreateGC(d, send, 0,0);
+  XDrawString(d, send, gc_taskbar_win, 0, 0, "Win 1", strlen("Win 1"));
+  XMapWindow(d, send);
+
+  return send;
+}

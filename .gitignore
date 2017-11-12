@@ -7,6 +7,5 @@ Debug
 X11-Capstone.workspace.layout
 *.mk
 *.txt
-Makefile
 main
 main_reference.c
