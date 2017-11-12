@@ -1,18 +1,8 @@
-# makefile for capstone window manager
-BIN = main 
-CC = gcc
+.PHONY: clean All
 
-LIBS = -lX11 -lXpm
-
-OBJS = buttonEvents.o configureEvents.o destroyEvents.o \
-       displayEvents.o initCapstone.o keyEvents.o \
-       motionEvents.o reparent.o main.o
-
-all: $(OBJS)
-	$(CC) $(OBJS) -o $(BIN) $(LIBS)
-
-%.o: %.c
-	$(CC) -c -o $@ $<
-
+All:
+	@echo "----------Building project:[ main - Debug ]----------"
+	@"$(MAKE)" -f  "main.mk"
 clean:
-	rm -rf *.o $(BIN)
+	@echo "----------Cleaning project:[ main - Debug ]----------"
+	@"$(MAKE)" -f  "main.mk" clean
