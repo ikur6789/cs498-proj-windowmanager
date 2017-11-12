@@ -257,8 +257,8 @@ Bool reparentWindow(Window child, Bool before_wm)
     char *childName = NULL;
     if(XFetchName(d, child, &childName)) {
         printf("Reparenting Window! Name: %s\n", childName);
+        strcpy(c->title, childName);
     }
-    strcpy(c->title, childName);
         
     // test drawing the title to the titleBar
     /*XDrawString(

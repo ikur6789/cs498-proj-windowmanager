@@ -24,10 +24,6 @@ GC 					gc_taskbar;
 Window 				task_bar; //X11 window for taskbar
 Window              task_win2;
 
-/* location of the programs list for the program menu,
- * set by parseRC in initCapstone.c */
-char *menuFilePath = NULL;
-
 /***************************************/
 /**        FUNCTION PROTOTYPES        **/
 /***************************************/
@@ -125,7 +121,7 @@ Bool initX(void)
     XSelectInput(
         d,
         DefaultRootWindow(d),
-        SubstructureRedirectMask | SubstructureNotifyMask
+        SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask
     );
     
     // flushes outpu buffer, waits until all requests have

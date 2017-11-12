@@ -5,6 +5,10 @@
 extern Display *d;
 extern WMClient *clientHead;
 
+/* location of the programs list for the program menu,
+ * set by parseRC in initCapstone.c */
+char *menuFilePath = NULL;
+
 // the initial position of the mouse on a movement event
 int startMouseX = 0;
 int startMouseY = 0;
@@ -20,6 +24,23 @@ int startWinHeight = 0;
 Bool hButtonPress(const XButtonEvent e)
 {
     printf("Button Press Event!\n");
+    
+    // if the root window was pressed we want to bring up our program menu
+    if(e.window == RootWindow(d, DefaultScreen(d)))
+    {
+        printf("Root Window Press!\n");
+        
+        // initial program to run
+        char menuCommand[100];
+        sprintf(menuCommand, "./ProgramMenu/main %d %d %s &", e.x_root, e.y_root, menuFilePath);
+        
+        printf("Menu Command: %s\n", menuCommand);
+        
+        // run the program menu!
+        system(menuCommand);
+        
+        return True;
+    }
 
     // Save the current mouse position to check for difference while moving
     startMouseX = e.x_root;

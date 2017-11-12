@@ -31,7 +31,9 @@ Bool hMapRequest(const XMapRequestEvent e)
 {
     printf("Map Request Event!\n");
     
+    printf("Before Reparent Window!\n");
     reparentWindow(e.window, False);
+    printf("After reparent window!\n");
     
     XMapWindow(d, e.window);
     

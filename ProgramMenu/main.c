@@ -32,7 +32,7 @@ Display *d;
 XEvent e; // event structure
 
 Bool initX(void); // open the x server
-void createWindow(void); // initializes the menWindow
+void createWindow(int x, int y); // initializes the menWindow
 
 Bool addMenuEntry(const char *dispstring, const char *execstring);
 Bool fillMenuList(const char *fname);
@@ -49,13 +49,13 @@ int main(int argc, char **argv)
 {
     
     /* Make sure args were passed */
-    if(argc != 2){
-        printf("Usage: %s [menu_file]\n", argv[0]);
+    if(argc != 4){
+        printf("Usage: %s [x] [y] [menu_file]\n", argv[0]);
         return 0;
     }
 
     /* read from the menu file and fill the list */
-    fillMenuList(argv[1]);
+    if( !fillMenuList(argv[3]) ) return -1;
 
     /* test print */
     printMenuList();
@@ -64,7 +64,11 @@ int main(int argc, char **argv)
     if(!initX()) return -1;
     
     /* initialize and start drawing the window */
-    createWindow();
+    int x = 0, y = 0;
+    sscanf(argv[1], "%d", &x);
+    sscanf(argv[2], "%d", &y);
+    printf("X: %d      Y: %d\n", x, y);
+    createWindow(x, y);
     
     /* Read the number of entries in the menu list and resize accordingly */
     resizeWindow();
@@ -110,14 +114,14 @@ Bool initX(void)
     return True;
 }
 
-void createWindow(void)
+void createWindow(int x, int y)
 {
     /* create the window */
     menWindow = XCreateSimpleWindow(
         d,
         RootWindow(d, DefaultScreen(d)),    // Display *parent
-        0,                                // x coord
-        0,                                // y coord
+        x,                                // x coord
+        y,                                // y coord
         100,           // window width
         100,              // window height
         1,                       // border size
@@ -127,10 +131,12 @@ void createWindow(void)
     
     /* select input for the window */
     XSelectInput(d, menWindow, ExposureMask | KeyPressMask | ButtonPressMask | PointerMotionMask);
-    
-    /* Make the window visible */
-    XMapWindow(d, menWindow);
-    
+
+    /* We don't want this window to be rebordered */
+    XSetWindowAttributes swa;
+    swa.override_redirect = True;
+    XChangeWindowAttributes(d, menWindow, CWOverrideRedirect, &swa);
+     
 }
 
 Bool readMenuList(char *fname, MenuEntry *head)
@@ -263,6 +269,10 @@ Bool resizeWindow(void)
         150,
         count * ENTRY_HEIGHT
     );
+
+    /* Now that the window is of proper size draw it */
+    XMapWindow(d, menWindow);
+
     return True;
 }
 
