@@ -5,6 +5,7 @@
 // variables from main.c
 extern Display *d;
 extern Window task_win2;
+extern WMClient *clientHead;
 
 Bool hCreateNotify(const XCreateWindowEvent e)
 {
@@ -34,6 +35,25 @@ Bool hMapRequest(const XMapRequestEvent e)
     reparentWindow(e.window, False);
     
     XMapWindow(d, e.window);
+	
+    WMClient *temp = clientHead;
+    XWindowAttributes fAttribs;
+	while(temp!=NULL)
+	{
+
+		XGetWindowAttributes(d, temp->frame, &fAttribs);
+		XDrawString(
+		d,
+		temp->titleBar,
+		DefaultGC(d, DefaultScreen(d)),
+		(fAttribs.width / 2)- strlen(temp->title)*CHAR_WIDTH, 
+		(TITLE_HEIGHT / 2) + CHAR_WIDTH/2,
+		temp->title,
+		strlen(temp->title)
+    		);
+
+		temp=temp->next;
+	}
     
     return True;
 }
@@ -41,8 +61,25 @@ Bool hMapRequest(const XMapRequestEvent e)
 Bool hExpose(const XExposeEvent e)
 {
     printf("Expose Event!\n");
-    
-    XDrawString(d, task_win2, DefaultGC(d, DefaultScreen(d)), 5, 15, "Win 1", strlen("Win 1"));
-    
+
+    WMClient *temp = clientHead;
+    XWindowAttributes fAttribs;
+	while(temp!=NULL)
+	{
+
+		XGetWindowAttributes(d, temp->frame, &fAttribs);
+		XDrawString(
+		d,
+		temp->titleBar,
+		DefaultGC(d, DefaultScreen(d)),
+		(fAttribs.width / 2)- strlen(temp->title)*CHAR_WIDTH, 
+		(TITLE_HEIGHT / 2) + CHAR_WIDTH/2,
+		temp->title,
+		strlen(temp->title)
+    		);
+
+		temp=temp->next;
+	}
     return True;
+	
 }

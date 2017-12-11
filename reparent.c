@@ -12,12 +12,13 @@ Pixmap minPixmap; // minimize image
 Pixmap maxPixmap; // maximize image
 Pixmap unmaxPixmap; // unmaximize image
 Pixmap closePixmap; // close window image
+int	task_x = 35;
 
 unsigned long  titleBarColor = 0x000000; // color of the titleBar
 unsigned long  borderColor   = 0x000000; // color of the window border
 
 // function prototypes
-Window make_task_window(int x_pos);
+Window make_task_window(int x_pos, WMClient *C);
 
 Bool reparentWindow(Window child, Bool before_wm)
 {
@@ -117,7 +118,7 @@ Bool reparentWindow(Window child, Bool before_wm)
                                     WhitePixel(d, DefaultScreen(d)),    // border
                                     0x00FF00);   // background        
     
-    c->task_icon = None;//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);                                
+    c->task_icon[0] = None;//XCreateSimpleWindow(d, task_bar, 21, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);                                
     
     /* give each button window their image */
     XSetWindowBackgroundPixmap(d, c->minWin, minPixmap);
@@ -259,7 +260,12 @@ Bool reparentWindow(Window child, Bool before_wm)
         printf("Reparenting Window! Name: %s\n", childName);
     }
     strcpy(c->title, childName);
-        
+
+    c->task_icon[0]=make_task_window(task_x, c);
+    task_x+=45;
+    XMapWindow(d, c->task_icon[0]);
+    XDrawString(d, c->task_icon[0], DefaultGC(d, DefaultScreen(d)), 5, 15, c->title, strlen(c->title));
+
     // test drawing the title to the titleBar
     /*XDrawString(
         d, 
@@ -281,6 +287,7 @@ Bool reparentWindow(Window child, Bool before_wm)
         c->title,                                           // string
         strlen(c->title)                                    // length of string
     );
+	printf("another reparent: %s", c->title);
     
     if(childName) XFree(childName);
     
@@ -307,6 +314,7 @@ Bool unparentWindow(Window child)
     
     // Unmap the frame
     XUnmapWindow(d, temp->frame);
+    XUnmapWindow(d, temp->task_icon[0]);
     
     // reparent the client window to the root window
     XReparentWindow(
@@ -350,6 +358,7 @@ Bool deleteClient(Window child)
          * and free memory */
         printf("Before destroy subwindows!\n");
         XDestroySubwindows(d, temp->frame);
+	XDestroyWindow(d, temp->task_icon[0]);
         
         printf("Before destroy frame!\n");
         XDestroyWindow(d, temp->frame);
@@ -471,18 +480,22 @@ void reparentClosePixmaps(void)
     if(closePixmap) XFreePixmap(d, closePixmap);
 }
 
-Window make_task_window(int x_pos)
+Window make_task_window(int x_pos, WMClient *C)
 {
   Window send;
   XWindowAttributes   get_task_attrbs;
   XGetWindowAttributes(d, task_bar, &get_task_attrbs);
   unsigned task_win_h = ((get_task_attrbs.height*3)/4);
   printf("\nHeight of taskbar %u\n", task_win_h);
-  send = XCreateSimpleWindow(d, task_bar, x_pos, ((get_task_attrbs.height)/4), 20, task_win_h, 0, 0, 0xf46e42);
+  send = XCreateSimpleWindow(d, task_bar, x_pos, ((get_task_attrbs.height)/4), 40, task_win_h, 0, 0, 0xf46e42);
   XWindowAttributes   pass_attributes;
   XGetWindowAttributes(d, send, &pass_attributes);
-  GC gc_taskbar_win = XCreateGC(d, send, 0,0);
-  XDrawString(d, send, gc_taskbar_win, 0, 0, "Win 1", strlen("Win 1"));
+  //GC gc_taskbar_win = XCreateGC(d, send, 0,0);
+
+  
+  printf("Window title: %s\n", C->title);
+  XMapWindow(d, send);
+  //XDrawString(d, send, DefaultGC(d, DefaultScreen(d)), 0, 0, C->title, strlen(C->title));
   XMapWindow(d, send);
 
   return send;

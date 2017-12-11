@@ -19,8 +19,8 @@
 # xinitrc file for testing our window manager.
 
 # 1. Start some programs to play with.
-xclock &
-xeyes &
+#xclock &
+#xeyes &
 sleep 2 && xterm &
 #xterm &
 

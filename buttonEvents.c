@@ -111,7 +111,7 @@ Bool hButtonPress(const XButtonEvent e)
 
     XWindowAttributes fAttribs; // frame attributes
     XGetWindowAttributes(d, temp->frame, &fAttribs);
-    XDrawString(
+    /*XDrawString(
         d,
         temp->titleBar,                                        // Drawable d
         DefaultGC(d, DefaultScreen(d)),                        // GC
@@ -119,8 +119,8 @@ Bool hButtonPress(const XButtonEvent e)
         (TITLE_HEIGHT / 2) + CHAR_WIDTH/2,                                      // y
         temp->title,                                           // string
         strlen(temp->title)                                    // length of string
-    );
-
+    );*/
+	printf("button events title: %s", temp->title);
     return True;
 }
 

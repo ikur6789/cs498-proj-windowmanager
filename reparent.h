@@ -26,7 +26,7 @@ typedef struct WMClient
     Window maxWin;
     Window closeWin;
     Window child;  // the actual application content window
-    Window task_icon;
+    Window task_icon[10];
 
     unsigned int x; // the x and y position before maximizing the window
     unsigned int y;
